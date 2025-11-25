@@ -66,7 +66,6 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
-          name: Release ${{ github.ref_name }}
           body: ${{ steps.generate_release_body.outputs.release_notes }}
   
   backend-build:

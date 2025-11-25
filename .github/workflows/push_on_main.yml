@@ -1,0 +1,65 @@
+name: Push on Main Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  
+  backend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push Docker image to Docker Hub
+        run: docker buildx build ./backend -t ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-backend:latest --push
+
+  frontend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push Docker image to Docker Hub
+        run: docker buildx build ./frontend -t ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-frontend:latest --push
+
+  backend-trigger-deployment:
+    needs: backend-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Intentionnal fail
+        run: exit 1
+      
+
+  frontend-trigger-deployment:
+    needs: backend-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Intentionnal fail
+        run: exit 1
+      
+      

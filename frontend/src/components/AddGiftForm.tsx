@@ -48,7 +48,7 @@ export function AddGiftForm({ personId, onSubmit }: AddGiftFormProps) {
           {(field) => (
             <textarea
               className="christmas-input w-full h-24 resize-none"
-              placeholder="Gift description..."
+              placeholder="Gift full description..."
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               required

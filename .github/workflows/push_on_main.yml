@@ -2,14 +2,76 @@ name: Push on Main Workflow
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*.*.*'
 
 jobs:
+
+  create-github-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find previous tag
+        id: find_prev_tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}~ 2>/dev/null || echo '')
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install gemini-cli
+        run: npm install -g @google/gemini-cli
+
+      - name: Generate Release Body with Gemini
+        id: generate_release_body
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          PREV_TAG="${{ steps.find_prev_tag.outputs.prev_tag }}"
+          CURRENT_TAG="${{ github.ref_name }}"
+          
+          if [ -n "$PREV_TAG" ]; then
+            DIFF_RANGE="$PREV_TAG..$CURRENT_TAG"
+          else
+            DIFF_RANGE=""
+          fi
+
+          if [ -n "$DIFF_RANGE" ]; then
+            GIT_DIFF=$(git diff $DIFF_RANGE)
+          else
+            GIT_DIFF=$(git show $CURRENT_TAG)
+          fi
+
+          PROMPT="Analyse le git diff suivant et génère une liste concise et formatée de nouvelles fonctionnalités et de corrections de bugs pour les notes de version, en utilisant des listes à puces. Le diff est : \n\n$GIT_DIFF"
+
+          RELEASE_BODY=$(echo "$PROMPT" | gemini-cli generate --model gemini-2.5-flash)
+
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: comnoco/create-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          name: Release ${{ github.ref_name }}
+          body: ${{ steps.generate_release_body.outputs.release_notes }}
   
   backend-build:
     runs-on: ubuntu-latest
-
+    needs: create-github-release
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -23,12 +85,22 @@ jobs:
           username: ${{ vars.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Push Docker image to Docker Hub
-        run: docker buildx build ./backend -t ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-backend:latest --push
+      - name: Extraire la version du Tag
+        id: tag
+        run: echo "VERSION=$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Docker image to Docker Hub
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-backend:${{ steps.tag.outputs.VERSION }}
+            ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-backend:latest
 
   frontend-build:
     runs-on: ubuntu-latest
-
+    needs: create-github-release
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -42,22 +114,30 @@ jobs:
           username: ${{ vars.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Push Docker image to Docker Hub
-        run: docker buildx build ./frontend -t ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-frontend:latest --push
+      - name: Extraire la version du Tag
+        id: tag
+        run: echo "VERSION=$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Docker image to Docker Hub
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-frontend:${{ steps.tag.outputs.VERSION }}
+            ${{ vars.DOCKER_HUB_USERNAME }}/2025-devops-tp-final-frontend:latest
 
   backend-trigger-deployment:
     needs: backend-build
     runs-on: ubuntu-latest
-
     steps:
       - name: Intentionnal fail
         run: exit 1
       
 
   frontend-trigger-deployment:
-    needs: backend-build
+    needs: frontend-build
     runs-on: ubuntu-latest
-
     steps:
       - name: Intentionnal fail
         run: exit 1

@@ -14,7 +14,10 @@ FROM nginx:alpine AS production
 WORKDIR /usr/share/nginx/html
 
 COPY --from=builder /app/dist .
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
+
+RUN apk add --no-cache gettext
 
 EXPOSE 5173
-CMD ["nginx", "-g", "daemon off;"]
+
+ENTRYPOINT [ "sh", "-c", "envsubst '${BACKEND_HOST} ${BACKEND_PORT}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'" ]

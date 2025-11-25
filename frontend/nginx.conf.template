@@ -12,7 +12,15 @@ server {
         proxy_set_header X-Forwarded-Proto "$scheme";
     }
 
+    location /storybook/ {
+        alias /usr/share/nginx/html/storybook/;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
     location / {
+        alias /usr/share/nginx/html/frontend/;
+        index index.html;
         try_files $uri $uri/ /index.html;
     }
 }

@@ -5,15 +5,22 @@ COPY package.json package-lock.json* ./
 
 RUN npm install
 
+RUN npm install @storybook/cli -g
+
 COPY . .
 
 RUN npm run build
+
+RUN npm run build-storybook
 
 FROM nginx:alpine AS production
 
 WORKDIR /usr/share/nginx/html
 
-COPY --from=builder /app/dist .
+COPY --from=builder /app/dist ./frontend
+
+COPY --from=builder /app/storybook-static ./storybook
+
 COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
 
 RUN apk add --no-cache gettext

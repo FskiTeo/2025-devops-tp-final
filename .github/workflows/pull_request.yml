@@ -19,6 +19,10 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Copy .env file
+        working-directory: ./backend
+        run: cp .env.example .env
+
       - name: Docker Compose Action
         uses: hoverkraft-tech/compose-action@v2.4.1
 

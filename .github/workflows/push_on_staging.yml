@@ -20,7 +20,7 @@ jobs:
 
       - name: Copy .env file
         working-directory: ./backend
-        run: cp .env.example .env
+        run: cp .env.exemple .env
 
       - name: Docker Compose Action
         uses: hoverkraft-tech/compose-action@v2.4.1

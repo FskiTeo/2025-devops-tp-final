@@ -51,7 +51,7 @@ jobs:
 
           PROMPT="Analyse le git diff suivant et génère une liste concise et formatée de nouvelles fonctionnalités et de corrections de bugs pour les notes de version, en utilisant des listes à puces. Le diff est : \n\n$GIT_DIFF"
 
-          RELEASE_BODY=$(echo "$PROMPT" | gemini-cli generate --model gemini-2.5-flash)
+          RELEASE_BODY=$(echo "$PROMPT" | gemini generate --model gemini-2.5-flash)
 
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
           echo "$RELEASE_BODY" >> $GITHUB_OUTPUT
